@@ -9,7 +9,7 @@ export interface Props {
   description?: string;
 }
 
-const { title, description = "A minimalist personal blog" } = Astro.props;
+const { title, description = "Industrial Engineering student at Cal Poly SLO focused on supply chain, operations research, and web development" } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -50,6 +50,11 @@ const { title, description = "A minimalist personal blog" } = Astro.props;
         
         // Initialize content with entrance animation
         if (mainContent) {
+          // Ensure content is visible on initial load
+          mainContent.style.opacity = '1';
+          mainContent.style.transform = 'translateY(0)';
+          mainContent.style.visibility = 'visible';
+          
           mainContent.classList.add('content-entering');
           setTimeout(() => {
             mainContent.classList.remove('content-entering');
@@ -104,37 +109,62 @@ const { title, description = "A minimalist personal blog" } = Astro.props;
             
             // Replace the content
             if (mainContent && newContent) {
+              // Store scripts before replacing innerHTML
+              const scripts = Array.from(newContent.querySelectorAll('script'));
+              
+              // Replace content
               mainContent.innerHTML = newContent.innerHTML;
               
-              // Run scripts in the new content
-              Array.from(newContent.querySelectorAll('script')).forEach(oldScript => {
+              // Execute scripts after content is in DOM
+              scripts.forEach(oldScript => {
                 const newScript = document.createElement('script');
                 Array.from(oldScript.attributes).forEach(attr => {
                   newScript.setAttribute(attr.name, attr.value);
                 });
                 newScript.textContent = oldScript.textContent;
-                if (oldScript.parentNode) {
-                  mainContent.appendChild(newScript);
-                }
+                // Append to body instead of mainContent to ensure execution
+                document.body.appendChild(newScript);
+                // Execute immediately and remove after a delay
+                setTimeout(() => {
+                  try {
+                    if (newScript.parentNode) {
+                      newScript.parentNode.removeChild(newScript);
+                    }
+                  } catch (e) {
+                    // Ignore removal errors
+                  }
+                }, 200);
               });
             }
             
-            // Fade in new content with animation
+            // Ensure content is visible and fade in
             if (mainContent) {
+              // Force a reflow to ensure content is rendered
+              void mainContent.offsetHeight;
+              
+              // Set initial state - but ensure visibility is set
+              mainContent.style.visibility = 'visible';
               mainContent.style.opacity = '0';
               mainContent.style.transform = 'translateY(10px)';
+              mainContent.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
               
-              setTimeout(() => {
-                mainContent.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                mainContent.style.opacity = '1';
-                mainContent.style.transform = 'translateY(0)';
-                
-                // Add entrance animation class
-                mainContent.classList.add('content-entering');
-                setTimeout(() => {
-                  mainContent.classList.remove('content-entering');
-                }, 800);
-              }, 50);
+              // Trigger fade in after a brief delay
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  if (mainContent) {
+                    mainContent.style.opacity = '1';
+                    mainContent.style.transform = 'translateY(0)';
+                    
+                    // Add entrance animation class
+                    mainContent.classList.add('content-entering');
+                    setTimeout(() => {
+                      if (mainContent) {
+                        mainContent.classList.remove('content-entering');
+                      }
+                    }, 800);
+                  }
+                });
+              });
             }
             
             // Hide transition overlay
@@ -149,6 +179,79 @@ const { title, description = "A minimalist personal blog" } = Astro.props;
             document.dispatchEvent(new CustomEvent('spa-content-loaded', { 
               detail: { url }
             }));
+            
+            // Dispatch DOMContentLoaded-like event for page-specific scripts
+            document.dispatchEvent(new Event('astro:page-load'));
+            
+            // Check if we're on the home page and trigger hero animations
+            const isHomePage = url === window.location.origin + '/' || url.endsWith('/') || url.includes('/index');
+            
+            // Ensure content is visible (fallback) - especially important for home page
+            setTimeout(() => {
+              if (mainContent) {
+                mainContent.style.opacity = '1';
+                mainContent.style.transform = 'translateY(0)';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.display = '';
+                
+                // Force reflow to ensure all content is visible
+                void mainContent.offsetHeight;
+                
+                // Fix hero text visibility - CRITICAL for home page
+                if (isHomePage) {
+                  // Find and animate all hero elements
+                  const heroText = mainContent.querySelector('.hero-text');
+                  if (heroText) {
+                    // Add animate-reveal to all hero text spans immediately
+                    const heroSpans = heroText.querySelectorAll('span');
+                    heroSpans.forEach((span, index) => {
+                      setTimeout(() => {
+                        span.classList.add('animate-reveal');
+                        span.style.opacity = '1';
+                        span.style.transform = 'translateY(0)';
+                      }, 100 + (index * 100));
+                    });
+                  }
+                  
+                  // Fix the paragraph after hero-text
+                  const heroParagraph = mainContent.querySelector('.hero-text + p');
+                  if (heroParagraph) {
+                    setTimeout(() => {
+                      heroParagraph.classList.add('animate-reveal');
+                      heroParagraph.style.opacity = '1';
+                      heroParagraph.style.transform = 'translateY(0)';
+                    }, 400);
+                  }
+                  
+                  // Fix the button container
+                  const heroButtons = mainContent.querySelector('.hero-text ~ div.flex');
+                  if (heroButtons) {
+                    setTimeout(() => {
+                      heroButtons.classList.add('animate-reveal');
+                      heroButtons.style.opacity = '1';
+                      heroButtons.style.transform = 'translateY(0)';
+                    }, 550);
+                  }
+                  
+                  // Also animate posts and other elements
+                  setTimeout(() => {
+                    const articles = mainContent.querySelectorAll('article.group');
+                    articles.forEach((article, index) => {
+                      setTimeout(() => {
+                        article.classList.add('animate-reveal');
+                      }, index * 100);
+                    });
+                    
+                    const topicCards = mainContent.querySelectorAll('a.group.flex.flex-col');
+                    topicCards.forEach((card, index) => {
+                      setTimeout(() => {
+                        card.classList.add('animate-reveal');
+                      }, index * 100);
+                    });
+                  }, 700);
+                }
+              }
+            }, 100);
             
             // Scroll to top or to saved position
             window.scrollTo(0, 0);
@@ -190,10 +293,17 @@ const { title, description = "A minimalist personal blog" } = Astro.props;
               }
               
               e.preventDefault();
-              const targetHref = link.href;
+              let targetHref = link.href;
+              
+              // Normalize home page URL
+              const url = new URL(targetHref);
+              if (url.pathname === '/' || url.pathname === '/index.html') {
+                targetHref = window.location.origin + '/';
+              }
               
               // Don't transition if clicking the current page
-              if (targetHref === window.location.href) {
+              const currentUrl = window.location.origin + window.location.pathname;
+              if (targetHref === currentUrl || (targetHref === window.location.origin + '/' && currentUrl === window.location.origin + '/')) {
                 return;
               }
               
@@ -211,27 +321,18 @@ const { title, description = "A minimalist personal blog" } = Astro.props;
         
         // Handle browser back/forward navigation
         window.addEventListener('popstate', (e) => {
+          let targetUrl = window.location.href;
           if (e.state && e.state.path) {
-            loadContent(e.state.path);
-          } else {
-            loadContent(window.location.href);
+            targetUrl = e.state.path;
           }
+          // Normalize home page URL
+          const url = new URL(targetUrl);
+          if (url.pathname === '/' || url.pathname === '/index.html') {
+            targetUrl = window.location.origin + '/';
+          }
+          loadContent(targetUrl);
         });
         
-        // Check RSS feed availability
-        const checkAndGenerateRSS = async () => {
-          try {
-            const response = await fetch('/rss.xml');
-            if (!response.ok) {
-              console.warn('RSS feed not found. Please generate it using an RSS plugin for Astro.');
-            }
-          } catch (error) {
-            console.warn('Could not check RSS feed status.');
-          }
-        };
-        
-        // Check RSS feed availability
-        checkAndGenerateRSS();
       });
       
       // Theme handling with transition effects
